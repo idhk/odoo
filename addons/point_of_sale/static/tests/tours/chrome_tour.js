@@ -208,6 +208,26 @@ registry.category("web_tour.tours").add("test_limited_categories", {
         ].flat(),
 });
 
+registry.category("web_tour.tours").add("test_limited_categories_child_product_search", {
+    steps: () =>
+        [
+            Chrome.startPoS(),
+            Dialog.confirm("Open Register"),
+            // The product in the child category is not pre-loaded (limited product count = 1).
+            // Typing its name should not show it in the local list.
+            ProductScreen.searchProduct("Child Cat Product"),
+            ProductScreen.productIsDisplayed("Child Cat Product").map(negateStep),
+            // Clicking "Search more" triggers loadProductFromDB which queries the server.
+            // With the fix, the domain now includes child category IDs so the product is found.
+            {
+                content: "Click 'Search more' to search for unloaded product on the server",
+                trigger: ".search-more-button button",
+                run: "click",
+            },
+            ProductScreen.productIsDisplayed("Child Cat Product"),
+        ].flat(),
+});
+
 registry.category("web_tour.tours").add("CustomerNoteIsPresentAfterRefresh", {
     steps: () =>
         [
@@ -261,5 +281,45 @@ registry.category("web_tour.tours").add("test_click_all_orders_keep_customer", {
                 content: "customer is selected",
                 trigger: ".product-screen .set-partner:contains('Partner Test 1')",
             },
+        ].flat(),
+});
+
+registry.category("web_tour.tours").add("test_ctrl_number_ignored", {
+    steps: () =>
+        [
+            Chrome.startPoS(),
+            Dialog.confirm("Open Register"),
+            ProductScreen.addOrderline("Whiteboard Pen", "1", "6", "6.0"),
+            {
+                trigger: "body",
+                run: () => {
+                    window.dispatchEvent(new KeyboardEvent("keyup", { key: "5", ctrlKey: true }));
+                },
+            },
+            {
+                trigger: "body",
+                run: () =>
+                    new Promise((resolve) => {
+                        setTimeout(resolve, 300); // wait 300ms so NumberBuffer timeout runs
+                    }),
+            },
+            inLeftSide([
+                { ...ProductScreen.clickLine("Whiteboard Pen")[0], isActive: ["mobile"] },
+                ...ProductScreen.selectedOrderlineHasDirect("Whiteboard Pen", "1", "6.0"),
+            ]),
+        ].flat(),
+});
+
+registry.category("web_tour.tours").add("test_set_opening_note_without_cash_method", {
+    steps: () =>
+        [
+            Chrome.startPoS(),
+            {
+                content: "Add Opening Notes",
+                trigger: ".opening-notes",
+                run: "edit Opening Notes",
+            },
+            Dialog.confirm("Open Register"),
+            Chrome.waitRequest(),
         ].flat(),
 });
